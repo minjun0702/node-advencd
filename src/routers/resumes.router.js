@@ -1,7 +1,5 @@
 import express from "express";
 import { prisma } from "../utils/prisma.util.js";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { createResumeValidator } from "../middlewares/validators/create-resume-validator.middleware.js";
 import { updateResumeValidator } from "../middlewares/validators/update-resume-validator.middleware.js";
 import { HTTP_STATUS } from "../constants/http-status.constant.js";
@@ -13,33 +11,29 @@ import { statusUpdateResumeValidator } from "../middlewares/validators/statusupd
 export const resumesRouter = express.Router();
 
 // 이력서 생성 api
-resumesRouter.post(
-  "/",
-  createResumeValidator,
-  async (req, res, next) => {
-    try {
-      const user = req.user;
-      const { title, aboutMe } = req.body;
-      const userId = user.userId;
+resumesRouter.post("/", createResumeValidator, async (req, res, next) => {
+  try {
+    const user = req.user;
+    const { title, aboutMe } = req.body;
+    const userId = user.userId;
 
-      const data = await prisma.Resume.create({
-        data: {
-          authId: userId,
-          title,
-          aboutMe,
-        },
-      });
+    const data = await prisma.Resume.create({
+      data: {
+        authId: userId,
+        title,
+        aboutMe,
+      },
+    });
 
-      return res.status(HTTP_STATUS.OK).json({
-        status: HTTP_STATUS.OK,
-        message: MESSAGES.RESUMES.CERATE.SUCCEED,
-        data,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+    return res.status(HTTP_STATUS.OK).json({
+      status: HTTP_STATUS.OK,
+      message: MESSAGES.RESUMES.CERATE.SUCCEED,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // 이력서 전체 조회 api
 resumesRouter.get("/", async (req, res, next) => {
@@ -80,7 +74,7 @@ resumesRouter.get("/", async (req, res, next) => {
     });
 
     //원하는 내용만 순회하여 출력
-    resume = resume.map(Resume => {
+    resume = resume.map((Resume) => {
       return {
         id: Resume.resumeId,
         authId: Resume.authIds.name,
@@ -148,10 +142,8 @@ resumesRouter.get("/:id", async (req, res, next) => {
 });
 
 //이력서 수정 api
-resumesRouter.put(
-  "/:id",
-  updateResumeValidator,
-  async (req, res, next) => {
+resumesRouter.put("/:id", updateResumeValidator, async (req, res, next) => {
+  try {
     const user = req.user;
     const userId = user.userId;
     const { id } = req.params;
@@ -192,8 +184,10 @@ resumesRouter.put(
       message: MESSAGES.RESUMES.UPDATE.SUCCEED,
       resumeCheck,
     });
-  },
-);
+  } catch (error) {
+    next(error);
+  }
+});
 
 //이력서 삭제 api
 resumesRouter.delete("/:id", async (req, res, next) => {
@@ -242,7 +236,7 @@ resumesRouter.patch(
       const { support, reason } = req.body;
 
       //트랜잭션
-      await prisma.$transaction(async tx => {
+      await prisma.$transaction(async (tx) => {
         //이력서 정보조회
         const checkResume = await tx.Resume.findUnique({
           where: { resumeId: +id },
@@ -284,43 +278,39 @@ resumesRouter.patch(
 );
 
 // 이력서 로그
-resumesRouter.get(
-  "/:id/logs",
-  requireRoles([USER_ROLE.RECRUITER]),
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
+resumesRouter.get("/:id/logs", requireRoles([USER_ROLE.RECRUITER]), async (req, res, next) => {
+  try {
+    const { id } = req.params;
 
-      let data = await prisma.ResumeLog.findMany({
-        where: { resumesId: +id },
-        orderBy: { createdAt: "desc" },
-        include: {
-          recruiter: true,
-        },
-      });
+    let data = await prisma.ResumeLog.findMany({
+      where: { resumesId: +id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        recruiter: true,
+      },
+    });
 
-      console.log(id);
-      data = data.map(log => {
-        return {
-          id: log.logsId,
-          recruiterName: log.recruiter.name,
-          resumeId: log.resumesId,
-          oldStatus: log.oldStatus,
-          newStatus: log.newStatus,
-          reason: log.reason,
-          createdAt: log.createdAt,
-        };
-      });
+    console.log(id);
+    data = data.map((log) => {
+      return {
+        id: log.logsId,
+        recruiterName: log.recruiter.name,
+        resumeId: log.resumesId,
+        oldStatus: log.oldStatus,
+        newStatus: log.newStatus,
+        reason: log.reason,
+        createdAt: log.createdAt,
+      };
+    });
 
-      return res.status(HTTP_STATUS.OK).json({
-        status: HTTP_STATUS.OK,
-        message: MESSAGES.RESUMES.READ_LIST.LOG.SUCCEED,
-        data,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+    return res.status(HTTP_STATUS.OK).json({
+      status: HTTP_STATUS.OK,
+      message: MESSAGES.RESUMES.READ_LIST.LOG.SUCCEED,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default resumesRouter;
